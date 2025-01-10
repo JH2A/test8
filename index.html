@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鬼退治！豆まきチャレンジ</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #f0e68c; /* Light yellow for festive feel */
+            color: #000000;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            background-color: #FF851B; /* Orange for festive feel */
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            font-size: 36px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        #score, #highScoreDisplay {
+            font-size: 24px;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        #gameCanvas {
+            border: 4px solid #FF851B;
+            background-color: #FFFACD; /* LemonChiffon color for simplicity */
+            margin-top: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        }
+        button {
+            background-color: #FF851B;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            background-color: #E67E22;
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>鬼退治！豆まきチャレンジ</h1>
+    <p id="highScoreDisplay">これまでのハイスコア: 0</p>
+    <p id="score">得点: 0</p>
+    <canvas id="gameCanvas" width="600" height="400"></canvas>
+    <button id="startButton">ゲーム開始</button>
+    <audio id="bgm" loop>
+        <source src="bgm.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="hitSound">
+        <source src="hit.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="explosionSound">
+        <source src="explosion.mp3" type="audio/mpeg">
+    </audio>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        let score = 0;
+        let timer = 10;
+        let gameInterval, timerInterval;
+
+        let highScore = localStorage.getItem('highScore') || 0;
+        highScoreDisplay.innerText = `これまでのハイスコア: ${highScore}`;
+        document.getElementById('score').innerText = `得点: 0`;
+
+        const bgm = document.getElementById('bgm');
+        const hitSound = document.getElementById('hitSound');
+        const explosionSound = document.getElementById('explosionSound');
+
+        const oniTypes = [
+            { color: 'red', points: 10 },
+            { color: 'blue', points: 20 },
+            { color: 'green', points: 30 },
+            { color: 'gold', points: 100 }
+        ];
+
+        const updateHighScore = () => {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreDisplay.innerText = `これまでのハイスコア: ${highScore}`;
+            }
+        };
+
+        const drawOni = (x, y, color) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 50, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.font = "40px Arial"; // Larger font size for the face
+            ctx.fillText('👹', x - 25, y + 15); // Adjusted position for larger face
+        };
+
+        const explosionEffect = (x, y) => {
+            let radius = 10;
+            const interval = setInterval(() => {
+                ctx.clearRect(x - radius, y - radius, radius * 2, radius * 2);
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'orange';
+                ctx.fill();
+                radius += 5;
+                if (radius > 50) {
+                    clearInterval(interval);
+                    ctx.clearRect(x - 50, y - 50, 100, 100);
+                }
+            }, 50);
+        };
+
+        const spawnOni = () => {
+            const oni = oniTypes[Math.random() < 0.1 ? 3 : Math.floor(Math.random() * 3)]; // 10% chance for gold
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+
+            drawOni(x, y, oni.color);
+
+            canvas.addEventListener('click', (event) => {
+                const rect = canvas.getBoundingClientRect();
+                const clickX = event.clientX - rect.left;
+                const clickY = event.clientY - rect.top;
+
+                if (Math.hypot(clickX - x, clickY - y) < 50) {
+                    score += oni.points;
+                    document.getElementById('score').innerText = `得点: ${score}`;
+                    explosionSound.play();
+                    explosionEffect(x, y);
+                    hitSound.play();
+                }
+            });
+        };
+
+        const startGame = () => {
+            score = 0;
+            timer = 10;
+            document.getElementById('score').innerText = `得点: ${score}`;
+            startButton.style.display = 'none';
+            bgm.play();
+
+            gameInterval = setInterval(spawnOni, 1000);
+            timerInterval = setInterval(() => {
+                timer--;
+                if (timer === 0) {
+                    clearInterval(gameInterval);
+                    clearInterval(timerInterval);
+                    updateHighScore();
+                    bgm.pause();
+                    alert(`ゲーム終了！最終得点: ${score}\nこれまでのハイスコア: ${highScore}`);
+                    startButton.style.display = 'block';
+                }
+            }, 1000);
+        };
+
+        startButton.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
